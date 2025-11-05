@@ -1,0 +1,586 @@
+3. /* fcfs.c
+   First Come First Serve scheduling simulation
+*/
+#include<stdio.h>
+int main(){
+    int i,n;
+    printf("Enter the total number of processes : ");
+    scanf("%d",&n);
+    
+    int pid[n], at[n], bt[n], ct[n], tat[n], wt[n];
+    for(i=0; i<n; i++){
+        printf("Enter Arrival Time and Burst Time for the proccess %d: ",i+1);
+        scanf("%d%d",&at[i],&bt[i]);
+        pid[i] = i+1;
+    }
+    
+    // sort according to Arrival Time
+    for(i=0; i<n-1; i++){
+        for(int j=0; j<n-i-1; j++){
+            if(at[j]>at[j+1]){
+                int temp;
+                temp = at[j]; at[j] = at[j+1]; at[j+1] = temp;
+                temp = bt[j]; bt[j] = bt[j+1]; bt[j+1] = temp;
+                temp = pid[j]; pid[j] = pid[j+1]; pid[j+1] = temp;
+            }
+        }
+    }
+    
+    // calculate completion time
+    ct[0] = at[0] + bt[0];
+    for(i=1; i<n; i++){
+        if(at[i]>ct[i-1]){
+            ct[i] = at[i] + bt[i];  // corner case for idle CPU time
+        } else {
+            ct[i] = ct[i-1] + bt[i];
+        }
+    }
+    
+    // caluculate turn around time and waiting time
+    float avgTAT = 0, avgWT = 0;
+    for(int i=0; i<n; i++){
+        tat[i] = ct[i] - at[i];
+        wt[i] = tat[i] - bt[i];
+        avgTAT += tat[i];
+        avgWT += wt[i];
+    }
+    
+    //print all values
+    printf("\nPID\tAT\tBT\tCT\tTAT\tWT\n");
+    for(i=0 ; i<n; i++){
+        printf("%d\t%d\t%d\t%d\t%d\t%d\n",pid[i],at[i],bt[i],ct[i],tat[i],wt[i]);
+    }
+    
+    // Print Gantt Chart
+    printf("Gantt Chart : \n");
+    for(int i=0; i<n; i++){
+        printf("| P%d ",pid[i]);
+    }
+    printf("|\n");
+    
+    printf("%d",at[0]);
+    for(int i=0; i<n; i++){
+        printf("\t%d", ct[i]);
+    }
+    
+    printf("\nAverage TAT is %.2f: ", avgTAT / n);
+    printf("\nAverage WT is %.2f: ",avgWT / n);
+    
+    return 0;
+    
+}
+4. /* sjf_preemptive.c
+   Preemptive SJF (Shortest Remaining Time First)
+*/
+#include <stdio.h>
+#include <limits.h>
+
+int main() {
+    int n, i, smallest, time, completed = 0;
+    float avgWT = 0, avgTAT = 0;
+
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    int pid[n], at[n], bt[n], rt[n], ct[n], tat[n], wt[n];
+    
+    for (i = 0; i < n; i++) {
+        printf("Enter Arrival Time and Burst Time for Process %d: ", i + 1);
+        scanf("%d%d", &at[i], &bt[i]);
+        pid[i] = i + 1;
+        rt[i] = bt[i];
+    }
+
+    int currentTime = 0;
+    int ganttChart[1000]; // store process IDs at each time
+    int gcIndex = 0;      // track index in Gantt chart
+
+    while (completed != n) {
+        smallest = -1;
+        int minRT = INT_MAX;
+
+        // Find process with smallest remaining time among arrived ones
+        for (i = 0; i < n; i++) {
+            if (at[i] <= currentTime && rt[i] > 0 && rt[i] < minRT) {
+                minRT = rt[i];
+                smallest = i;
+            }
+        }
+
+        if (smallest == -1) {
+            ganttChart[gcIndex++] = -1; // CPU idle
+            currentTime++;
+            continue;
+        }
+
+        ganttChart[gcIndex++] = pid[smallest]; // record running process
+        rt[smallest]--;
+        currentTime++;
+
+        if (rt[smallest] == 0) {
+            completed++;
+            ct[smallest] = currentTime;
+            tat[smallest] = ct[smallest] - at[smallest];
+            wt[smallest] = tat[smallest] - bt[smallest];
+            avgWT += wt[smallest];
+            avgTAT += tat[smallest];
+        }
+    }
+
+    printf("\nPID\tAT\tBT\tCT\tTAT\tWT\n");
+    for (i = 0; i < n; i++) {
+        printf("%d\t%d\t%d\t%d\t%d\t%d\n", pid[i], at[i], bt[i], ct[i], tat[i], wt[i]);
+    }
+
+    printf("\nAverage Turnaround Time = %.2f", avgTAT / n);
+    printf("\nAverage Waiting Time = %.2f\n", avgWT / n);
+
+    // -------------------- GANTT CHART DISPLAY --------------------
+    printf("\n\nGANTT CHART:\n");
+    printf("-------------------------------------------------\n");
+
+    // Print process sequence
+    for (i = 0; i < gcIndex; i++) {
+        if (ganttChart[i] == -1)
+            printf("| Idle ");
+        else
+            printf("| P%d ", ganttChart[i]);
+    }
+    printf("|\n");
+
+    // Print timeline
+    printf("0");
+    for (i = 1; i <= gcIndex; i++) {
+        printf("   %d", i);
+    }
+
+    printf("\n-------------------------------------------------\n");
+
+    return 0;
+}
+5. /* priority_np.c
+   Non-preemptive priority scheduling (lower number = higher priority assumed)
+*/
+  #include <stdio.h>
+#include <limits.h>
+
+int main() {
+    int n, i, j;
+    float avgTAT = 0, avgWT = 0;
+
+    printf("Enter total number of processes: ");
+    scanf("%d", &n);
+
+    int pid[n], at[n], bt[n], pr[n], ct[n], tat[n], wt[n];
+
+    for (i = 0; i < n; i++) {
+        printf("Enter Arrival Time, Burst Time, and Priority for Process %d: ", i + 1);
+        scanf("%d%d%d", &at[i], &bt[i], &pr[i]);
+        pid[i] = i + 1;
+    }
+
+    // Sort by arrival time
+    for (i = 0; i < n - 1; i++) {
+        for (j = 0; j < n - i - 1; j++) {
+            if (at[j] > at[j + 1]) {
+                int temp;
+                temp = at[j]; at[j] = at[j + 1]; at[j + 1] = temp;
+                temp = bt[j]; bt[j] = bt[j + 1]; bt[j + 1] = temp;
+                temp = pr[j]; pr[j] = pr[j + 1]; pr[j + 1] = temp;
+                temp = pid[j]; pid[j] = pid[j + 1]; pid[j + 1] = temp;
+            }
+        }
+    }
+
+    int completed = 0, currentTime = 0;
+    int done[n];
+    for (i = 0; i < n; i++) done[i] = 0;
+
+    // Arrays for Gantt Chart
+    int gcPID[1000], start[1000], end[1000];
+    int gcIndex = 0;
+
+    while (completed != n) {
+        int smallest = -1;
+        int minPR = INT_MAX;
+
+        // Find process with highest priority among arrived ones
+        for (i = 0; i < n; i++) {
+            if (at[i] <= currentTime && done[i] == 0 && pr[i] < minPR) {
+                smallest = i;
+                minPR = pr[i];
+            }
+        }
+
+        // If CPU is idle
+        if (smallest == -1) {
+            currentTime++;
+            continue;
+        }
+
+        // Record in Gantt chart
+        gcPID[gcIndex] = pid[smallest];
+        start[gcIndex] = currentTime;
+
+        currentTime += bt[smallest];  // Execute the process fully (non-preemptive)
+        end[gcIndex] = currentTime;
+        gcIndex++;
+
+        ct[smallest] = currentTime;
+        tat[smallest] = ct[smallest] - at[smallest];
+        wt[smallest] = tat[smallest] - bt[smallest];
+
+        avgTAT += tat[smallest];
+        avgWT += wt[smallest];
+
+        done[smallest] = 1;
+        completed++;
+    }
+
+    // Print results
+    printf("\nPID\tAT\tBT\tPR\tCT\tTAT\tWT\n");
+    for (i = 0; i < n; i++) {
+        printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+               pid[i], at[i], bt[i], pr[i], ct[i], tat[i], wt[i]);
+    }
+
+    printf("\nAverage Turnaround Time = %.2f", avgTAT / n);
+    printf("\nAverage Waiting Time = %.2f\n", avgWT / n);
+
+    // Print Gantt Chart
+    printf("\n\nGANTT CHART:\n");
+    printf("-------------------------------------------------\n");
+
+    for (i = 0; i < gcIndex; i++) {
+        printf("|  P%d  ", gcPID[i]);
+    }
+    printf("|\n");
+
+    printf("-------------------------------------------------\n");
+    printf("%d", start[0]);
+    for (i = 0; i < gcIndex; i++) {
+        printf("     %d", end[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+6. /* round_robin.c
+   Round Robin scheduling simulation
+*/
+  #include <stdio.h>
+
+int main() {
+    int n, tq, i;
+    float avgWT = 0, avgTAT = 0;
+
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    int pid[n], at[n], bt[n], rt[n], ct[n], tat[n], wt[n];
+
+    // Input process details
+    for (i = 0; i < n; i++) {
+        printf("Enter Arrival Time and Burst Time for Process %d: ", i + 1);
+        scanf("%d%d", &at[i], &bt[i]);
+        pid[i] = i + 1;
+        rt[i] = bt[i]; // remaining time initially = burst time
+    }
+
+    printf("Enter Time Quantum: ");
+    scanf("%d", &tq);
+
+    int time = 0, completed = 0;
+    int done[n];
+    for (i = 0; i < n; i++) done[i] = 0;
+
+    // Gantt chart arrays
+    int gcPID[1000], start[1000], end[1000];
+    int gcIndex = 0;
+
+    // Continue until all processes are completed
+    while (completed != n) {
+        int executed = 0;  // to track if any process executed in this cycle
+
+        for (i = 0; i < n; i++) {
+            if (at[i] <= time && rt[i] > 0) { // process has arrived and not finished
+                executed = 1;
+                
+                gcPID[gcIndex] = pid[i];
+                start[gcIndex] = time;
+
+                if (rt[i] <= tq) {
+                    time += rt[i];
+                    rt[i] = 0;
+                    end[gcIndex] = time;
+                    gcIndex++;
+
+                    ct[i] = time;
+                    tat[i] = ct[i] - at[i];
+                    wt[i] = tat[i] - bt[i];
+                    avgWT += wt[i];
+                    avgTAT += tat[i];
+                    completed++;
+                } else {
+                    rt[i] -= tq;
+                    time += tq;
+                    end[gcIndex] = time;
+                    gcIndex++;
+                }
+            }
+        }
+
+        if (!executed) {
+            // CPU idle
+            gcPID[gcIndex] = -1; // idle marker
+            start[gcIndex] = time;
+            time++;
+            end[gcIndex] = time;
+            gcIndex++;
+        }
+    }
+
+    // Display table
+    printf("\nPID\tAT\tBT\tCT\tTAT\tWT\n");
+    for (i = 0; i < n; i++) {
+        printf("%d\t%d\t%d\t%d\t%d\t%d\n",
+               pid[i], at[i], bt[i], ct[i], tat[i], wt[i]);
+    }
+
+    printf("\nAverage Turnaround Time = %.2f", avgTAT / n);
+    printf("\nAverage Waiting Time = %.2f\n", avgWT / n);
+
+    // Display Gantt Chart
+    printf("\n\nGANTT CHART:\n");
+    printf("-------------------------------------------------\n");
+    for (i = 0; i < gcIndex; i++) {
+        if (gcPID[i] == -1)
+            printf("| IDLE ");
+        else
+            printf("| P%d ", gcPID[i]);
+    }
+    printf("|\n");
+    printf("-------------------------------------------------\n");
+
+    // Print timeline
+    printf("%d", start[0]);
+    for (i = 0; i < gcIndex; i++) {
+        printf("    %d", end[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+7. /* first_fit.c
+   First Fit memory allocation
+*/
+#include <stdio.h>
+
+int main(){
+    int m; printf("Number of memory blocks: "); scanf("%d",&m);
+    int blocks[m]; for(int i=0;i<m;i++){ printf("Block %d size: ", i+1); scanf("%d",&blocks[i]); }
+    int n; printf("Number of processes: "); scanf("%d",&n);
+    int proc[n]; for(int i=0;i<n;i++){ printf("Process %d size: ", i+1); scanf("%d",&proc[i]); }
+    int alloc[n]; for(int i=0;i<n;i++) alloc[i]=-1;
+    int rem[m]; for(int i=0;i<m;i++) rem[i]=blocks[i];
+    for(int i=0;i<n;i++){
+        for(int j=0;j<m;j++){
+            if(rem[j] >= proc[i]){ alloc[i]=j; rem[j]-=proc[i]; break; }
+        }
+    }
+    printf("\nAllocation:\nProcess\tSize\tBlock\tRemainingBlockSize\n");
+    for(int i=0;i<n;i++){
+        if(alloc[i]==-1) printf("P%d\t%d\tNot Allocated\n", i+1, proc[i]);
+        else printf("P%d\t%d\tB%d\t%d\n", i+1, proc[i], alloc[i]+1, rem[alloc[i]]);
+    }
+    printf("\nUnallocated blocks / fragmentation:\n");
+    for(int j=0;j<m;j++) printf("Block %d remaining %d\n", j+1, rem[j]);
+    return 0;
+}
+8. /* best_fit.c
+   Best Fit memory allocation
+*/
+#include <stdio.h>
+#include <limits.h>
+
+int main(){
+    int m; printf("Blocks: "); scanf("%d",&m);
+    int blocks[m]; for(int i=0;i<m;i++){ printf("Block %d size: ", i+1); scanf("%d",&blocks[i]); }
+    int n; printf("Processes: "); scanf("%d",&n);
+    int proc[n]; for(int i=0;i<n;i++){ printf("P%d size: ", i+1); scanf("%d",&proc[i]); }
+    int alloc[n]; for(int i=0;i<n;i++) alloc[i]=-1;
+    int rem[m]; for(int i=0;i<m;i++) rem[i]=blocks[i];
+    for(int i=0;i<n;i++){
+        int best = -1; int best_space = INT_MAX;
+        for(int j=0;j<m;j++){
+            if(rem[j] >= proc[i] && (rem[j]-proc[i]) < best_space){
+                best_space = rem[j]-proc[i]; best = j;
+            }
+        }
+        if(best!=-1){ alloc[i]=best; rem[best]-=proc[i]; }
+    }
+    printf("\nResult:\nP\tSize\tBlock\tRemBlock\n");
+    for(int i=0;i<n;i++){
+        if(alloc[i]==-1) printf("P%d\t%d\tNot Alloc\n", i+1, proc[i]);
+        else printf("P%d\t%d\tB%d\t%d\n", i+1, proc[i], alloc[i]+1, rem[alloc[i]]);
+    }
+    return 0;
+}
+/* next_fit.c
+   Next Fit memory allocation
+*/
+#include <stdio.h>
+
+int main(){
+    int m; printf("Blocks: "); scanf("%d",&m);
+    int blocks[m]; for(int i=0;i<m;i++){ printf("Block %d size: ", i+1); scanf("%d",&blocks[i]); }
+    int n; printf("Processes: "); scanf("%d",&n);
+    int proc[n]; for(int i=0;i<n;i++){ printf("P%d size: ", i+1); scanf("%d",&proc[i]); }
+    int alloc[n]; for(int i=0;i<n;i++) alloc[i]=-1;
+    int rem[m]; for(int i=0;i<m;i++) rem[i]=blocks[i];
+    int last = 0;
+    for(int i=0;i<n;i++){
+        int j = last, tried=0;
+        while(tried < m){
+            if(rem[j] >= proc[i]){ alloc[i]=j; rem[j]-=proc[i]; last = j; break; }
+            j = (j+1)%m; tried++;
+        }
+    }
+    printf("\nResults:\n");
+    for(int i=0;i<n;i++){
+        if(alloc[i]==-1) printf("P%d size %d -> Not allocated\n", i+1, proc[i]);
+        else printf("P%d size %d -> Block %d remaining %d\n", i+1, proc[i], alloc[i]+1, rem[alloc[i]]);
+    }
+    return 0;
+}
+10./* worst_fit.c
+   Worst Fit memory allocation
+*/
+#include <stdio.h>
+#include <limits.h>
+
+int main(){
+    int m; printf("Blocks: "); scanf("%d",&m);
+    int blocks[m]; for(int i=0;i<m;i++){ printf("Block %d size: ", i+1); scanf("%d",&blocks[i]); }
+    int n; printf("Processes: "); scanf("%d",&n);
+    int proc[n]; for(int i=0;i<n;i++){ printf("P%d size: ", i+1); scanf("%d",&proc[i]); }
+    int alloc[n]; for(int i=0;i<n;i++) alloc[i]=-1;
+    int rem[m]; for(int i=0;i<m;i++) rem[i]=blocks[i];
+    for(int i=0;i<n;i++){
+        int worst=-1; int worst_space=-1;
+        for(int j=0;j<m;j++){
+            if(rem[j] >= proc[i] && rem[j] > worst_space){ worst_space = rem[j]; worst = j; }
+        }
+        if(worst!=-1){ alloc[i]=worst; rem[worst] -= proc[i]; }
+    }
+    printf("\nResults:\n");
+    for(int i=0;i<n;i++){
+        if(alloc[i]==-1) printf("P%d not allocated\n", i+1);
+        else printf("P%d -> Block %d remaining %d\n", i+1, alloc[i]+1, rem[alloc[i]]);
+    }
+    return 0;
+}
+11./* page_fifo.c
+   FIFO page replacement
+*/
+#include <stdio.h>
+
+int main(){
+    int m; printf("Number of frames: "); scanf("%d",&m);
+    int len; printf("Reference string length: "); scanf("%d",&len);
+    int ref[len]; for(int i=0;i<len;i++) scanf("%d",&ref[i]);
+    int frames[m]; for(int i=0;i<m;i++) frames[i]=-1;
+    int pointer=0, faults=0;
+    for(int i=0;i<len;i++){
+        int page = ref[i];
+        int found=0;
+        for(int j=0;j<m;j++) if(frames[j]==page) { found=1; break; }
+        if(!found){
+            frames[pointer]=page; pointer=(pointer+1)%m; faults++;
+        }
+        printf("After %d: ", page);
+        for(int j=0;j<m;j++) printf("%d ", frames[j]);
+        printf("\n");
+    }
+    printf("Total page faults = %d\n", faults);
+    return 0;
+}
+12./* page_lru.c
+   LRU page replacement simulation
+*/
+#include <stdio.h>
+#include <limits.h>
+
+int main(){
+    int m; printf("Frames: "); scanf("%d",&m);
+    int len; printf("Ref string length: "); scanf("%d",&len);
+    int ref[len]; for(int i=0;i<len;i++) scanf("%d",&ref[i]);
+    int frames[m]; for(int i=0;i<m;i++) frames[i]=-1;
+    int time[m]; for(int i=0;i<m;i++) time[i]=0;
+    int t=0, faults=0;
+    for(int i=0;i<len;i++){
+        int page=ref[i], found=-1;
+        for(int j=0;j<m;j++) if(frames[j]==page) { found=j; break; }
+        if(found!=-1){
+            time[found]=++t;
+        } else {
+            int empty=-1;
+            for(int j=0;j<m;j++) if(frames[j]==-1){ empty=j; break; }
+            if(empty!=-1){ frames[empty]=page; time[empty]=++t; }
+            else {
+                int lru=0;
+                for(int j=1;j<m;j++) if(time[j]<time[lru]) lru=j;
+                frames[lru]=page; time[lru]=++t;
+            }
+            faults++;
+        }
+        printf("After %d: ", page);
+        for(int j=0;j<m;j++) printf("%d ", frames[j]);
+        printf("\n");
+    }
+    printf("Page faults = %d\n", faults);
+    return 0;
+}
+13./* page_optimal.c
+   Optimal page replacement
+*/
+#include <stdio.h>
+#include <limits.h>
+
+int find_future(int frames[], int m, int ref[], int len, int pos){
+    int far = -1, idx = -1;
+    for(int i=0;i<m;i++){
+        int j;
+        for(j=pos+1;j<len;j++) if(frames[i]==ref[j]) break;
+        if(j==len) return i; // not used again -> best to replace
+        if(j>far){ far=j; idx=i; }
+    }
+    return (idx==-1?0:idx);
+}
+
+int main(){
+    int m; printf("Frames: "); scanf("%d",&m);
+    int len; printf("Ref length: "); scanf("%d",&len);
+    int ref[len]; for(int i=0;i<len;i++) scanf("%d",&ref[i]);
+    int frames[m]; for(int i=0;i<m;i++) frames[i]=-1;
+    int faults=0, filled=0;
+    for(int i=0;i<len;i++){
+        int page = ref[i], found=0;
+        for(int j=0;j<m;j++) if(frames[j]==page) { found=1; break; }
+        if(!found){
+            if(filled < m){ frames[filled++]=page; }
+            else {
+                int replace = find_future(frames, m, ref, len, i);
+                frames[replace]=page;
+            }
+            faults++;
+        }
+        printf("After %d: ", page);
+        for(int j=0;j<m;j++) printf("%d ", frames[j]);
+        printf("\n");
+    }
+    printf("Total page faults = %d\n", faults);
+    return 0;
+}
+
+
